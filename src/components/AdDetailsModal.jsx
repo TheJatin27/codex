@@ -1,46 +1,23 @@
-import React, { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase"; // Firebase config import
+import React from "react";
 
-const AdDetailsModal = ({ isOpen, onClose }) => {
-  const [adDetails, setAdDetails] = useState(null);
-
-  useEffect(() => {
-    // Fetch the ad details from Firestore when the modal is open
-    if (isOpen) {
-      const fetchAdDetails = async () => {
-        try {
-          const querySnapshot = await getDocs(collection(db, "ads"));
-          querySnapshot.forEach((doc) => {
-            const adData = doc.data();
-            console.log("Fetched Ad Data:", adData);  // Debug log to check the data
-            setAdDetails(adData); // Set data for the first ad, or handle multiple ads
-          });
-        } catch (error) {
-          console.error("Error fetching ad details: ", error);
-        }
-      };
-
-      fetchAdDetails();
-    }
-  }, [isOpen]);
-
-  // If modal is closed or no ad details fetched, don't render the modal
+const AdDetailsModal = ({ isOpen, onClose, adDetails }) => {
   if (!isOpen || !adDetails) return null;
-
-  // Log the status value to ensure it's being set correctly
-  console.log("Ad Status:", adDetails.status); // Debug log to check the status field
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 max-w-lg w-full relative">
+        {/* Close Button */}
         <button
           className="absolute top-2 right-2 text-black text-lg"
           onClick={onClose}
         >
           &times;
         </button>
+
+        {/* Modal Header */}
         <h2 className="text-2xl font-bold mb-4">Ad Details</h2>
+
+        {/* Ad Details */}
         <div className="flex gap-8">
           <div>
             <p>
@@ -56,11 +33,14 @@ const AdDetailsModal = ({ isOpen, onClose }) => {
               <strong>Daily Budget:</strong> ₹{adDetails.dailyBudget || 0}
             </p>
             <p>
+              <strong>Status:</strong> {adDetails.status || "N/A"}
+            </p>
+            <p>
               <strong>Specific Advertise:</strong> {adDetails.specific || "N/A"}
             </p>
 
-            {/* Conditionally render the approve/reject buttons based on status */}
-            {adDetails.status === "pending" && (
+            {/* Approve and Reject Buttons */}
+            {adDetails.status !== "approved" && (
               <div className="flex gap-4 mt-4">
                 <button className="px-4 py-2 bg-purple-500 text-white rounded-md">
                   Approve
@@ -70,12 +50,9 @@ const AdDetailsModal = ({ isOpen, onClose }) => {
                 </button>
               </div>
             )}
-
-            {/* If status is approved, the buttons will not be rendered */}
-            {adDetails.status === "approved" && (
-              <p className="text-green-500 mt-4">This ad is already approved</p>
-            )}
           </div>
+
+          {/* Ad Preview */}
           <div>
             <h3 className="font-semibold mb-2">Ad Preview:</h3>
             {adDetails.adFile ? (

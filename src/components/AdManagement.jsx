@@ -4,7 +4,6 @@ import { db } from "../firebase"; // Firebase config import
 import Table from "./Table";
 import search from "../assets/search.svg";
 import filter from "../assets/filter.svg";
-// import pen from "../assets/pen.svg";
 import AdDetailsModal from "./AdDetailsModal.jsx";
 
 const AdManagement = () => {
@@ -14,7 +13,7 @@ const AdManagement = () => {
   const [approvedAds, setApprovedAds] = useState([]); // Ads with 'approved' status
   const [isApproved, setIsApproved] = useState(true); // Toggle between Pending and Approved
 
-  // Columns setup for the table
+  // Table columns setup
   const columns = [
     { header: "AD ID", field: "adId" },
     { header: "Ad Name", field: "adName" },
@@ -28,7 +27,7 @@ const AdManagement = () => {
         <button
           className="bg-purple-500 text-white px-3 py-1 rounded-full"
           onClick={() => {
-            setSelectedAd(row); // Set the selected ad data
+            setSelectedAd(row); // Pass the full ad data to the modal
             setIsModalOpen(true); // Open the modal
           }}
         >
@@ -38,7 +37,7 @@ const AdManagement = () => {
     },
   ];
 
-  // Fetch Ads Data from Firestore
+  // Fetch ads data from Firestore
   useEffect(() => {
     const fetchAdsData = async () => {
       try {
@@ -54,12 +53,16 @@ const AdManagement = () => {
             brandName: data.brandName || "N/A",
             phone: data.phone || "N/A",
             industry: data.industry || "N/A",
-            status: data.status || "N/A",
-            walletBalance: data.walletBalance || "N/A", // Assuming this field exists
+            adFile: data.adFile || null, // URL for the ad image or file
+            dailyBudget: data.dailyBudget || 0,
+            adType: data.adType || "N/A",
+            specific: data.specific || "N/A", // For specific advertise field
+            walletBalance: data.walletBalance || "N/A",
             views: data.views || "N/A",
+            status: data.status || "N/A",
           };
 
-          // Push the ad into either pending or approved list based on the status
+          // Categorize ads based on status
           if (data.status === "pending") {
             pendingList.push(ad);
           } else if (data.status === "approved") {
@@ -77,8 +80,9 @@ const AdManagement = () => {
     fetchAdsData();
   }, []);
 
+  // Toggle between pending and approved ads
   const handleToggle = () => {
-    setIsApproved(!isApproved); // Toggle between Pending and Approved
+    setIsApproved(!isApproved);
   };
 
   return (
@@ -102,7 +106,7 @@ const AdManagement = () => {
           </div>
 
           <div className="flex">
-            <div className="relative flex justify-between ">
+            <div className="relative flex justify-between">
               <div className="relative">
                 <img
                   src={search}
@@ -115,37 +119,37 @@ const AdManagement = () => {
                   className="pl-12 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
-              <button className="ml-4 px-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center">
+              {/* <button className="ml-4 px-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center">
                 <div className="flex">
                   <img src={filter} alt="" />
                   <span> Filter</span>
                 </div>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
 
-        {/* Conditional Rendering of Pending or Approved Ads */}
+        {/* Render either pending or approved ads based on toggle */}
         <div className="mb-4">
           {isApproved ? (
             <>
               <h2 className="font-semibold text-xl mb-4">Pending Ads</h2>
-              <Table columns={columns} data={pendingAds} /> {/* Render Pending Ads */}
+              <Table columns={columns} data={pendingAds} /> {/* Pending ads */}
             </>
           ) : (
             <>
               <h2 className="font-semibold text-xl mb-4">Approved Ads</h2>
-              <Table columns={columns} data={approvedAds} /> {/* Render Approved Ads */}
+              <Table columns={columns} data={approvedAds} /> {/* Approved ads */}
             </>
           )}
         </div>
 
-        {/* Show the Ad Details Modal when selectedAd is set */}
+        {/* Ad Details Modal */}
         {selectedAd && (
           <AdDetailsModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
-            adDetails={selectedAd}
+            adDetails={selectedAd} // Pass the full ad details
           />
         )}
       </div>
