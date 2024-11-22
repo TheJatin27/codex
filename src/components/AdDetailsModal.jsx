@@ -1,7 +1,68 @@
 import React from "react";
+import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase"; // Import initialized Firebase
 
-const AdDetailsModal = ({ isOpen, onClose, adDetails }) => {
+const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
   if (!isOpen || !adDetails) return null;
+
+
+  const handleApprove = async () => {
+    try {
+      // Ensure Firestore is initialized
+      const adDocRef = doc(db, "ads",adDetails.id ); // Ensure `adDetails.id` is valid
+  
+      // Update the status field
+      await updateDoc(adDocRef, { status: "approved" });
+  
+      // Optional: Trigger a callback to notify parent about status change
+      if (onStatusChange) onStatusChange("approved");
+  
+      // Close the modal
+      onClose();
+  
+      // Provide user feedback
+      console.log("Ad successfully approved.");
+    } catch (error) {
+      console.error("Error approving ad:", error);
+      alert("Failed to approve the ad. Please try again.");
+    }
+  };
+  
+
+
+
+
+  // const handleApprove = async () => {
+  //   try {
+  //     const db = getFirestore();
+  //     const adDocRef = doc(db, "ads", adDetails.id); // Ensure adDetails contains `id` of the document
+  //     await updateDoc(adDocRef, { status: "approved" });
+
+  //     // Optional: Trigger a callback to reflect changes in parent component
+  //     if (onStatusChange) onStatusChange("approved");
+
+  //     // Close the modal
+  //     onClose();
+  //   } catch (error) {
+  //     console.error("Error approving ad:", error);
+  //   }
+  // };
+
+  const handleReject = async () => {
+    try {
+      const db = getFirestore();
+      const adDocRef = doc(db, "ads", adDetails.id); // Ensure adDetails contains `id` of the document
+      await updateDoc(adDocRef, { status: "rejected" });
+
+      // Optional: Trigger a callback to reflect changes in parent component
+      if (onStatusChange) onStatusChange("rejected");
+
+      // Close the modal
+      onClose();
+    } catch (error) {
+      console.error("Error rejecting ad:", error);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
@@ -42,10 +103,16 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails }) => {
             {/* Approve and Reject Buttons */}
             {adDetails.status !== "approved" && (
               <div className="flex gap-4 mt-4">
-                <button className="px-4 py-2 bg-purple-500 text-white rounded-md">
+                <button
+                  onClick={handleApprove}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-md"
+                >
                   Approve
                 </button>
-                <button className="px-4 py-2 border border-purple-500 text-purple-500 rounded-md">
+                <button
+                  onClick={handleReject}
+                  className="px-4 py-2 border border-purple-500 text-purple-500 rounded-md"
+                >
                   Reject
                 </button>
               </div>

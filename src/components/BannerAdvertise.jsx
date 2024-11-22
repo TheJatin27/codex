@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore"; // Import deleteDoc and doc
-import { db } from "../firebase"; // Import Firestore instance
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { db } from "../firebase";
 import Table from "./Table";
 import upload from "../assets/upload.svg";
 import search from "../assets/search.svg";
@@ -10,12 +10,14 @@ const BannerAdvertise = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [adData, setAdData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false); // For toggling dropdown visibility
+  const [filterOption, setFilterOption] = useState("All"); // Track selected filter option
 
   // Helper function to format Firestore timestamps
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "N/A";
-    const date = new Date(timestamp.seconds * 1000); // Convert seconds to milliseconds
-    return date.toLocaleString(); // Format as a human-readable string
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleString();
   };
 
   // Fetch ads from Firestore
@@ -28,7 +30,7 @@ const BannerAdvertise = () => {
           return {
             id: doc.id,
             ...data,
-            createdAt: formatTimestamp(data.createdAt), // Format the createdAt timestamp
+            createdAt: formatTimestamp(data.createdAt),
           };
         });
         setAdData(adsList);
@@ -43,22 +45,27 @@ const BannerAdvertise = () => {
   // Handle Remove Ad
   const handleRemoveAd = async (adId) => {
     try {
-      // Delete the ad from Firestore
       await deleteDoc(doc(db, "bannerAds", adId));
-
-      // Remove the ad from state
       setAdData((prevAds) => prevAds.filter((ad) => ad.id !== adId));
-
       console.log(`Ad with ID ${adId} removed successfully.`);
     } catch (error) {
       console.error("Error removing ad:", error);
     }
   };
 
-  // Filter ads by search term
-  const filteredAds = adData.filter((ad) =>
-    ad.adName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Sort and Filter Ads
+  const sortedAndFilteredAds = adData
+    .filter((ad) =>
+      ad.adName?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (filterOption === "Top Banner") {
+        return new Date(a.publishOn) - new Date(b.publishOn); // Earliest publishOn first
+      } else if (filterOption === "Bottom Banner") {
+        return new Date(b.publishOn) - new Date(a.publishOn); // Latest publishOn first
+      }
+      return 0; // No sorting for "All"
+    });
 
   const columns = [
     {
@@ -66,7 +73,7 @@ const BannerAdvertise = () => {
       field: "image",
       render: (row) => (
         <img
-          src={row.adImage || "/placeholder-image.png"} // Use `adImage` field for the image URL
+          src={row.adImage || "/placeholder-image.png"}
           alt={row.adName}
           className="w-16 h-16 object-cover"
         />
@@ -80,7 +87,7 @@ const BannerAdvertise = () => {
       header: "",
       render: (row) => (
         <button
-          onClick={() => handleRemoveAd(row.id)} // Call the remove function
+          onClick={() => handleRemoveAd(row.id)}
           className="text-white bg-purple-600 px-4 py-2 rounded-lg"
         >
           Remove this Ad
@@ -121,13 +128,51 @@ const BannerAdvertise = () => {
             className="pl-12 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
-        <button className="text-white bg-purple-600 px-4 py-2 rounded-lg">
-          Filter
-        </button>
+
+        {/* Filter Dropdown */}
+        <div className="relative">
+          <button
+            className="text-white bg-purple-600 px-4 py-2 rounded-lg"
+            onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+          >
+            Filter
+          </button>
+          {filterDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg">
+              <button
+                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setFilterOption("All");
+                  setFilterDropdownOpen(false);
+                }}
+              >
+                All
+              </button>
+              <button
+                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setFilterOption("Top Banner");
+                  setFilterDropdownOpen(false);
+                }}
+              >
+                Top Banner
+              </button>
+              <button
+                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setFilterOption("Bottom Banner");
+                  setFilterDropdownOpen(false);
+                }}
+              >
+                Bottom Banner
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
-      <Table columns={columns} data={filteredAds} />
+      <Table columns={columns} data={sortedAndFilteredAds} />
     </div>
   );
 };

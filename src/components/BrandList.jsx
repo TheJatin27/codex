@@ -53,7 +53,7 @@ const EditWalletModal = ({ isOpen, onClose, brand, currentBalance, onSave }) => 
         <div className="flex items-center border border-gray-300 rounded-md p-2 mb-4">
           <span className="text-xl mr-2">₹</span>
           <input
-            type="number"
+            type="text"
             value={walletBalance}
             onChange={(e) => setWalletBalance(e.target.value)}
             className="outline-none w-full"
@@ -88,14 +88,74 @@ const BrandList = () => {
     setSelectedBrand(null);
   };
 
-  const handleSaveBalance = (newBalance) => {
-    const updatedData = approvedBrands.map((item) =>
-      item.uid === selectedBrand.uid
-        ? { ...item, wallet: `₹${newBalance}` }
-        : item
-    );
-    setApprovedBrands(updatedData);
+
+  const handleSaveBalance = async (newBalance) => {
+    try {
+      const db = getFirestore();
+      const brandDocRef = doc(db, "Brand", selectedBrand.uid);
+  
+      // Ensure wallet is a string before calling replace
+      const currentWallet = String(selectedBrand.wallet);
+  
+      // Update the wallet balance in Firestore
+      await updateDoc(brandDocRef, { wallet: `{newBalance}` });
+  
+      // Update the local state
+      const updatedData = approvedBrands.map((item) =>
+        item.uid === selectedBrand.uid
+          ? { ...item, wallet: `₹${newBalance}` }
+          : item
+      );
+      setApprovedBrands(updatedData);
+  
+      // Show success message
+      setSuccessMessage("Wallet balance updated successfully!");
+  
+      // Hide the success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error("Error updating wallet balance: ", error);
+    }
   };
+  
+
+
+
+
+
+
+  // const handleSaveBalance = async (newBalance) => {
+  //   try {
+  //     const db = getFirestore();
+  //     const brandDocRef = doc(db, "Brand", selectedBrand.uid);
+  
+  //     // Update the wallet balance in Firestore
+  //     await updateDoc(brandDocRef, { wallet: `₹${newBalance}` });
+  
+  //     // Update the local state
+  //     const updatedData = approvedBrands.map((item) =>
+  //       item.uid === selectedBrand.uid
+  //         ? { ...item, wallet: `₹${newBalance}` }
+  //         : item
+  //     );
+  //     setApprovedBrands(updatedData);
+  
+  //     // Show success message
+  //     setSuccessMessage("Wallet balance updated successfully!");
+  
+  //     // Hide the success message after 3 seconds
+  //     setTimeout(() => {
+  //       setSuccessMessage("");
+  //     }, 3000);
+  //   } catch (error) {
+  //     console.error("Error updating wallet balance: ", error);
+  //   }
+  // };
+
+ 
+  
 
   const fetchBrands = async () => {
     try {
@@ -181,9 +241,9 @@ const BrandList = () => {
   ];
 
   const columnsApproved = [
-    { header: "User ID", field: "uid" },
+    { header: "Brand ID", field: "uid" },
     { header: "Brand Name", field: "brandName" },
-    { header: "Phone", field: "Phone" },
+    // { header: "Phone", field: "Phone" },
     { header: "Industry", field: "industry" },
     {
       header: "Wallet Balance",
@@ -199,7 +259,7 @@ const BrandList = () => {
         </div>
       ),
     },
-    { header: "Status", field: "status" },
+    { header: "Status", render: (row) => (<div className="flex items-center">Approved</div>) },
   ];
 
   const handleToggle = () => {
@@ -254,13 +314,23 @@ const BrandList = () => {
           <Table columns={columnsPending} data={pendingBrands} />
         )}
         {selectedBrand && (
-          <EditWalletModal
-            isOpen={isModalOpen}
-            onClose={handleCloseModal}
-            brand={selectedBrand.brandName}
-            currentBalance={selectedBrand.wallet.replace("₹", "")}
-            onSave={handleSaveBalance}
-          />
+          // <EditWalletModal
+          //   isOpen={isModalOpen}
+          //   onClose={handleCloseModal}
+          //   brand={selectedBrand.brandName}
+          //   currentBalance={selectedBrand.wallet.replace("₹", "")}
+          //   onSave={handleSaveBalance}
+          // />
+
+<EditWalletModal
+  isOpen={isModalOpen}
+  onClose={handleCloseModal}
+  brand={selectedBrand.brandName}
+  currentBalance={String(selectedBrand.wallet).replace("₹", "")}  // Correct usage
+  onSave={handleSaveBalance}
+/>
+
+
         )}
         <SuccessPopup
           message={successMessage}
