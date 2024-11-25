@@ -2,21 +2,21 @@ import React, { useState, useEffect } from "react";
 import Table from "./Table";
 import search from "../assets/search.svg";
 import filter from "../assets/filter.svg";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, updateDoc, doc } from "firebase/firestore";
 import { db } from "../firebase"; // Import your Firebase config here
 import WithdrawlsPopup from "./WithdrawalPopup";
 
 const WithdrawlsRequests = () => {
-  const [isPopupOpen, setIsPopupOpen] = useState(false); 
-  const [selectedUser, setSelectedUser] = useState(null); 
-  const [isApproved, setIsApproved] = useState(true); 
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isApproved, setIsApproved] = useState(true);
   const [dataPending, setDataPending] = useState([]);
   const [dataApproved, setDataApproved] = useState([]);
 
   const columnsPending = [
     { header: "Trans ID", field: "transId" },
     { header: "User Name", field: "holderName" },
-    { header: "Phone Number", field: "phoneNumber" }, // Assuming you add this field
+    { header: "Phone Number", field: "phoneNumber" },
     { header: "Requested Date", field: "date" },
     { header: "Payout Method", field: "type" },
     { header: "Points", field: "amount" },
@@ -33,12 +33,14 @@ const WithdrawlsRequests = () => {
           </button>
           <button
             className="bg-[#338401] text-white px-2 py-1 rounded-xl"
+            onClick={() => handleApprove(row.transId)}
             aria-label={`Approve ${row.holderName}'s request`}
           >
             Approve
           </button>
           <button
             className="bg-[#880000] text-white px-2 py-1 rounded-xl"
+            onClick={() => handleReject(row.transId)}
             aria-label={`Reject ${row.holderName}'s request`}
           >
             Reject
@@ -51,7 +53,7 @@ const WithdrawlsRequests = () => {
   const columnsApproved = [
     { header: "Trans ID", field: "transId" },
     { header: "User Name", field: "holderName" },
-    { header: "Phone Number", field: "phoneNumber" }, // Assuming you add this field
+    { header: "Phone Number", field: "phoneNumber" },
     { header: "Approved Date", field: "date" },
     { header: "Payout Method", field: "type" },
     { header: "Points", field: "amount" },
@@ -80,9 +82,9 @@ const WithdrawlsRequests = () => {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const Withdrawls = {
-          transId: doc.id, // Using document ID as transaction ID
+          transId: doc.id,
           holderName: data.holderName || "NA",
-          phoneNumber: data.phoneNumber || "NA", // Update based on available fields
+          phoneNumber: data.phoneNumber || "NA",
           date: data.date || "NA",
           type: data.type || "NA",
           amount: data.amount || "NA",
@@ -118,6 +120,32 @@ const WithdrawlsRequests = () => {
 
   const closePopup = () => {
     setIsPopupOpen(false);
+  };
+
+  const handleApprove = async (transId) => {
+    try {
+      const docRef = doc(db, "Withdrawls", transId);
+      await updateDoc(docRef, { status: "approved" });
+
+      // Update local state
+      const approvedItem = dataPending.find((item) => item.transId === transId);
+      setDataPending(dataPending.filter((item) => item.transId !== transId));
+      setDataApproved([...dataApproved, { ...approvedItem, status: "approved" }]);
+    } catch (error) {
+      console.error("Error approving request:", error);
+    }
+  };
+
+  const handleReject = async (transId) => {
+    try {
+      const docRef = doc(db, "Withdrawls", transId);
+      await updateDoc(docRef, { status: "rejected" });
+
+      // Update local state
+      setDataPending(dataPending.filter((item) => item.transId !== transId));
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+    }
   };
 
   return (

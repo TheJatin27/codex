@@ -1,66 +1,25 @@
 import React from "react";
-import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase"; // Import initialized Firebase
 
 const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
   if (!isOpen || !adDetails) return null;
 
-
-  const handleApprove = async () => {
+  const updateStatus = async (status) => {
     try {
-      // Ensure Firestore is initialized
-      const adDocRef = doc(db, "ads",adDetails.id ); // Ensure `adDetails.id` is valid
-  
-      // Update the status field
-      await updateDoc(adDocRef, { status: "approved" });
-  
-      // Optional: Trigger a callback to notify parent about status change
-      if (onStatusChange) onStatusChange("approved");
-  
-      // Close the modal
-      onClose();
-  
-      // Provide user feedback
-      console.log("Ad successfully approved.");
-    } catch (error) {
-      console.error("Error approving ad:", error);
-      alert("Failed to approve the ad. Please try again.");
-    }
-  };
-  
+      const adDocRef = doc(db, "ads", adDetails.adId); // Ensure `adDetails.adId` is valid
+      await updateDoc(adDocRef, { status }); // Update status field
 
-
-
-
-  // const handleApprove = async () => {
-  //   try {
-  //     const db = getFirestore();
-  //     const adDocRef = doc(db, "ads", adDetails.id); // Ensure adDetails contains `id` of the document
-  //     await updateDoc(adDocRef, { status: "approved" });
-
-  //     // Optional: Trigger a callback to reflect changes in parent component
-  //     if (onStatusChange) onStatusChange("approved");
-
-  //     // Close the modal
-  //     onClose();
-  //   } catch (error) {
-  //     console.error("Error approving ad:", error);
-  //   }
-  // };
-
-  const handleReject = async () => {
-    try {
-      const db = getFirestore();
-      const adDocRef = doc(db, "ads", adDetails.id); // Ensure adDetails contains `id` of the document
-      await updateDoc(adDocRef, { status: "rejected" });
-
-      // Optional: Trigger a callback to reflect changes in parent component
-      if (onStatusChange) onStatusChange("rejected");
+      // Notify parent component about the change
+      if (onStatusChange) onStatusChange(status);
 
       // Close the modal
       onClose();
+
+      console.log(`Ad successfully ${status}.`);
     } catch (error) {
-      console.error("Error rejecting ad:", error);
+      console.error(`Error updating ad status to ${status}:`, error);
+      alert(`Failed to update the ad status to ${status}. Please try again.`);
     }
   };
 
@@ -104,13 +63,13 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
             {adDetails.status !== "approved" && (
               <div className="flex gap-4 mt-4">
                 <button
-                  onClick={handleApprove}
+                  onClick={() => updateStatus("approved")}
                   className="px-4 py-2 bg-purple-500 text-white rounded-md"
                 >
                   Approve
                 </button>
                 <button
-                  onClick={handleReject}
+                  onClick={() => updateStatus("rejected")}
                   className="px-4 py-2 border border-purple-500 text-purple-500 rounded-md"
                 >
                   Reject
@@ -122,9 +81,9 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
           {/* Ad Preview */}
           <div>
             <h3 className="font-semibold mb-2">Ad Preview:</h3>
-            {adDetails.adFile ? (
+            {adDetails.adImage ? (
               <img
-                src={adDetails.adFile}
+                src={adDetails.adImage}
                 alt="Ad Preview"
                 className="rounded-lg object-cover w-40 h-40"
               />
