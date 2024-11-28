@@ -54,18 +54,30 @@ const BannerAdvertise = () => {
   };
 
   // Sort and Filter Ads
-  const sortedAndFilteredAds = adData
-    .filter((ad) =>
-      ad.adName?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (filterOption === "Top Banner") {
-        return new Date(a.publishOn) - new Date(b.publishOn); // Earliest publishOn first
-      } else if (filterOption === "Bottom Banner") {
-        return new Date(b.publishOn) - new Date(a.publishOn); // Latest publishOn first
-      }
-      return 0; // No sorting for "All"
-    });
+
+const sortedAndFilteredAds = adData
+  .filter((ad) => {
+    // Match search term
+    const matchesSearch = ad.adName?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Match filter option
+    const matchesFilter = 
+    (filterOption === "All" && ad.publishOn === "Top Banner" || ad.publishOn === "Bottom Banner") ||
+      // filterOption === "All" || 
+      (filterOption === "Top Banner" && ad.publishOn === "Top Banner") ||
+      (filterOption === "Bottom Banner" && ad.publishOn === "Bottom Banner");
+    
+    return matchesSearch && matchesFilter;
+  })
+  .sort((a, b) => {
+    if (filterOption === "Top Banner") {
+      return new Date(a.publishOn) - new Date(b.publishOn); // Earliest publishOn first
+    } else if (filterOption === "Bottom Banner") {
+      return new Date(b.publishOn) - new Date(a.publishOn); // Latest publishOn first
+    }
+    return 0; // No sorting for "All"
+  });
+
 
   const columns = [
     {
@@ -130,45 +142,46 @@ const BannerAdvertise = () => {
         </div>
 
         {/* Filter Dropdown */}
-        <div className="relative">
-          <button
-            className="text-white bg-purple-600 px-4 py-2 rounded-lg"
-            onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-          >
-            Filter
-          </button>
-          {filterDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg">
-              <button
-                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                onClick={() => {
-                  setFilterOption("All");
-                  setFilterDropdownOpen(false);
-                }}
-              >
-                All
-              </button>
-              <button
-                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                onClick={() => {
-                  setFilterOption("Top Banner");
-                  setFilterDropdownOpen(false);
-                }}
-              >
-                Top Banner
-              </button>
-              <button
-                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                onClick={() => {
-                  setFilterOption("Bottom Banner");
-                  setFilterDropdownOpen(false);
-                }}
-              >
-                Bottom Banner
-              </button>
-            </div>
-          )}
-        </div>
+<div className="relative">
+  <button
+    className="text-white bg-purple-600 px-4 py-2 rounded-lg"
+    onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+  >
+    Filter
+  </button>
+  {filterDropdownOpen && (
+    <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg">
+      <button
+        className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+        onClick={() => {
+          setFilterOption("All");
+          setFilterDropdownOpen(false);
+        }}
+      >
+        All
+      </button>
+      <button
+        className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+        onClick={() => {
+          setFilterOption("Top Banner");
+          setFilterDropdownOpen(false);
+        }}
+      >
+        Top Banner
+      </button>
+      <button
+        className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+        onClick={() => {
+          setFilterOption("Bottom Banner");
+          setFilterDropdownOpen(false);
+        }}
+      >
+        Bottom Banner
+      </button>
+    </div>
+  )}
+</div>
+
       </div>
 
       {/* Table */}
