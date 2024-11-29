@@ -65,7 +65,7 @@ const WithdrawalPopup = ({ userData, closePopup }) => {
           {withdrawalDetails.phoneNumber || "N/A"}
         </div>
 
-        {withdrawalDetails.type === "Bank Transfer" && (
+        {withdrawalDetails.type === "bank" && (
           <div>
             <div className="mb-2">
               <span className="font-semibold">Account Details:</span> (Bank Transfer)
@@ -101,12 +101,12 @@ const WithdrawalPopup = ({ userData, closePopup }) => {
           </div>
         )}
 
-        {withdrawalDetails.adminComment && (
+        {/* {withdrawalDetails.adminComment && (
           <div className="mt-4 text-sm text-gray-600">
             <span className="font-semibold">Admin Comment:</span>{" "}
             {withdrawalDetails.adminComment}
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
