@@ -114,7 +114,7 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
                   Delete
                 </button>
               </div>
-            ) : (
+            ) :(
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={() => updateStatus("approved")}

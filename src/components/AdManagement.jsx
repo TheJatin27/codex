@@ -65,10 +65,14 @@ const AdManagement = () => {
           // Categorize ads based on status
           if (ad.status === "pending") {
             pendingList.push(ad);
-          } else if (ad.status === "approved") {
+          } else if (ad.status === "approved" || ad.status === "Paused") {
             approvedList.push(ad);
           }
         });
+
+        // Sort by status field (optional if required)
+        pendingList.sort((a, b) => a.status.localeCompare(b.status));
+        approvedList.sort((a, b) => a.status.localeCompare(b.status));
 
         setPendingAds(pendingList);
         setApprovedAds(approvedList);
