@@ -5,6 +5,7 @@ import filter from "../assets/filter.svg";
 import pen from "../assets/pen.svg";
 import { getFirestore, collection, getDocs, doc, updateDoc } from "firebase/firestore";
 
+// Success Popup Component
 const SuccessPopup = ({ message, onClose }) => {
   if (!message) return null;
 
@@ -25,6 +26,7 @@ const SuccessPopup = ({ message, onClose }) => {
   );
 };
 
+// Edit Wallet Modal Component
 const EditWalletModal = ({ isOpen, onClose, brand, currentBalance, onSave }) => {
   const [walletBalance, setWalletBalance] = useState(currentBalance);
 
@@ -70,6 +72,7 @@ const EditWalletModal = ({ isOpen, onClose, brand, currentBalance, onSave }) => 
   );
 };
 
+// Main BrandList Component
 const BrandList = () => {
   const [isApproved, setIsApproved] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,30 +91,28 @@ const BrandList = () => {
     setSelectedBrand(null);
   };
 
-
   const handleSaveBalance = async (newBalance) => {
     try {
       const db = getFirestore();
       const brandDocRef = doc(db, "Brand", selectedBrand.uid);
-  
-      // Ensure wallet is a string before calling replace
-      const currentWallet = String(selectedBrand.wallet);
-  
-      // Update the wallet balance in Firestore
-      await updateDoc(brandDocRef, { wallet: `{newBalance}` });
-  
-      // Update the local state
+
+      const updatedBalance = parseInt(newBalance, 10);
+
+      // Update wallet balance in Firestore
+      await updateDoc(brandDocRef, { wallet: updatedBalance });
+
+      // Update local state
       const updatedData = approvedBrands.map((item) =>
         item.uid === selectedBrand.uid
-          ? { ...item, wallet: `₹${newBalance}` }
+          ? { ...item, wallet: `₹${updatedBalance}` }
           : item
       );
       setApprovedBrands(updatedData);
-  
+
       // Show success message
       setSuccessMessage("Wallet balance updated successfully!");
-  
-      // Hide the success message after 3 seconds
+
+      // Hide success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage("");
       }, 3000);
@@ -119,43 +120,6 @@ const BrandList = () => {
       console.error("Error updating wallet balance: ", error);
     }
   };
-  
-
-
-
-
-
-
-  // const handleSaveBalance = async (newBalance) => {
-  //   try {
-  //     const db = getFirestore();
-  //     const brandDocRef = doc(db, "Brand", selectedBrand.uid);
-  
-  //     // Update the wallet balance in Firestore
-  //     await updateDoc(brandDocRef, { wallet: `₹${newBalance}` });
-  
-  //     // Update the local state
-  //     const updatedData = approvedBrands.map((item) =>
-  //       item.uid === selectedBrand.uid
-  //         ? { ...item, wallet: `₹${newBalance}` }
-  //         : item
-  //     );
-  //     setApprovedBrands(updatedData);
-  
-  //     // Show success message
-  //     setSuccessMessage("Wallet balance updated successfully!");
-  
-  //     // Hide the success message after 3 seconds
-  //     setTimeout(() => {
-  //       setSuccessMessage("");
-  //     }, 3000);
-  //   } catch (error) {
-  //     console.error("Error updating wallet balance: ", error);
-  //   }
-  // };
-
- 
-  
 
   const fetchBrands = async () => {
     try {
@@ -185,10 +149,8 @@ const BrandList = () => {
       setPendingBrands((prev) => prev.filter((item) => item.uid !== row.uid));
       setApprovedBrands((prev) => [...prev, { ...row, Approve: true }]);
 
-      // Show success message
       setSuccessMessage("Brand has been approved!");
 
-      // Hide success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage("");
       }, 3000);
@@ -243,7 +205,6 @@ const BrandList = () => {
   const columnsApproved = [
     { header: "Brand ID", field: "uid" },
     { header: "Brand Name", field: "brandName" },
-    // { header: "Phone", field: "Phone" },
     { header: "Industry", field: "industry" },
     {
       header: "Wallet Balance",
@@ -259,7 +220,10 @@ const BrandList = () => {
         </div>
       ),
     },
-    { header: "Status", render: (row) => (<div className="flex items-center">Approved</div>) },
+    {
+      header: "Status",
+      render: () => <div className="flex items-center">Approved</div>,
+    },
   ];
 
   const handleToggle = () => {
@@ -303,40 +267,32 @@ const BrandList = () => {
               />
             </div>
             <button className="ml-4 px-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center">
-              <img src={filter} alt="Filter" />
-              <span>Filter</span>
+              <img src={filter} alt="Filter" className="mr-2" />
+              Filter
             </button>
           </div>
         </div>
-        {isApproved ? (
-          <Table columns={columnsApproved} data={approvedBrands} />
-        ) : (
-          <Table columns={columnsPending} data={pendingBrands} />
-        )}
-        {selectedBrand && (
-          // <EditWalletModal
-          //   isOpen={isModalOpen}
-          //   onClose={handleCloseModal}
-          //   brand={selectedBrand.brandName}
-          //   currentBalance={selectedBrand.wallet.replace("₹", "")}
-          //   onSave={handleSaveBalance}
-          // />
-
-<EditWalletModal
-  isOpen={isModalOpen}
-  onClose={handleCloseModal}
-  brand={selectedBrand.brandName}
-  currentBalance={String(selectedBrand.wallet).replace("₹", "")}  // Correct usage
-  onSave={handleSaveBalance}
-/>
-
-
-        )}
-        <SuccessPopup
-          message={successMessage}
-          onClose={() => setSuccessMessage("")}
-        />
+        <div>
+          {isApproved ? (
+            <Table columns={columnsApproved} data={approvedBrands} />
+          ) : (
+            <Table columns={columnsPending} data={pendingBrands} />
+          )}
+        </div>
       </div>
+      {selectedBrand && (
+        <EditWalletModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          brand={selectedBrand.brandName}
+          currentBalance={String(selectedBrand.wallet).replace("₹", "")}
+          onSave={handleSaveBalance}
+        />
+      )}
+      <SuccessPopup
+        message={successMessage}
+        onClose={() => setSuccessMessage("")}
+      />
     </div>
   );
 };

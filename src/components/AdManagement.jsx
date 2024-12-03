@@ -1,9 +1,67 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase"; // Firebase config import
 import Table from "./Table";
 import search from "../assets/search.svg";
 import AdDetailsModal from "./AdDetailsModal.jsx";
+
+const EditAdModal = ({ isOpen, onClose, ad, onSave }) => {
+  const [adName, setAdName] = useState(ad?.adName || "");
+  const [dailyBudget, setDailyBudget] = useState(ad?.dailyBudget || "");
+  const [location, setLocation] = useState(ad?.location || "");
+
+  const handleSave = async () => {
+    const updatedAd = { adName, dailyBudget, location };
+    onSave(updatedAd);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-lg w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Edit Ad Details</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            &times;
+          </button>
+        </div>
+        <div>
+          <label className="block mb-2">Ad Name</label>
+          <input
+            type="text"
+            value={adName}
+            onChange={(e) => setAdName(e.target.value)}
+            className="border border-gray-300 rounded-md p-2 mb-4 w-full"
+          />
+          <label className="block mb-2">Daily Budget</label>
+          <input
+            type="number"
+            value={dailyBudget}
+            onChange={(e) => setDailyBudget(e.target.value)}
+            className="border border-gray-300 rounded-md p-2 mb-4 w-full"
+          />
+          <label className="block mb-2">Location</label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="border border-gray-300 rounded-md p-2 mb-4 w-full"
+          />
+        </div>
+        <div className="mt-4">
+          <button
+            onClick={handleSave}
+            className="w-full bg-purple-500 text-white rounded-md py-2"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -12,32 +70,42 @@ const AdManagement = () => {
   const [approvedAds, setApprovedAds] = useState([]);
   const [isPendingView, setIsPendingView] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Table columns setup
   const columns = [
     { header: "AD ID", field: "adId" },
     { header: "Ad Name", field: "adName" },
     { header: "Brand Name", field: "brandName" },
-    { header: "Email", field: "email" },
-    { header: "Ad Type", field: "adType" },
+    { header: "Start Date", field: "startDate" },
+    { header: "End Date", field: "endDate" },
     {
       header: "",
       field: "viewButton",
       render: (row) => (
-        <button
-          className="bg-purple-500 text-white px-3 py-1 rounded-full"
-          onClick={() => {
-            setSelectedAd(row); // Pass full ad data to the modal
-            setIsModalOpen(true);
-          }}
-        >
-          View
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="bg-purple-500 text-white px-3 py-1 rounded-full"
+            onClick={() => {
+              setSelectedAd(row);
+              setIsModalOpen(true);
+            }}
+          >
+            View
+          </button>
+          <button
+            className="bg-yellow-500 text-white px-3 py-1 rounded-full"
+            onClick={() => {
+              setSelectedAd(row);
+              setIsEditModalOpen(true);
+            }}
+          >
+            Edit
+          </button>
+        </div>
       ),
     },
   ];
 
-  // Fetch ads data from Firestore
   useEffect(() => {
     const fetchAdsData = async () => {
       try {
@@ -51,18 +119,21 @@ const AdManagement = () => {
             adId: doc.id,
             adName: data.adName || "N/A",
             brandName: data.brandName || "N/A",
-            phone: data.phone || "N/A",
-            industry: data.industry || "N/A",
-            adImage: data.adImage || null, // Updated to fetch adImage
             dailyBudget: data.dailyBudget || 0,
-            adType: data.adType || "N/A",
-            specific: data.specific || "N/A",
-            walletBalance: data.walletBalance || "N/A",
-            views: data.views || "N/A",
+            location: data.location || "N/A",
+            startDate: data.createdAt
+              ? typeof data.createdAt.seconds === "number"
+                ? new Date(data.createdAt.seconds * 1000).toLocaleString()
+                : new Date(data.createdAt).toLocaleString()
+              : "N/A",
+            endDate: data.endDate
+              ? typeof data.endDate.seconds === "number"
+                ? new Date(data.endDate.seconds * 1000).toLocaleString()
+                : new Date(data.endDate).toLocaleString()
+              : "N/A",
             status: data.status || "N/A",
           };
 
-          // Categorize ads based on status
           if (ad.status === "pending") {
             pendingList.push(ad);
           } else if (ad.status === "approved" || ad.status === "Paused") {
@@ -70,7 +141,6 @@ const AdManagement = () => {
           }
         });
 
-        // Sort by status field (optional if required)
         pendingList.sort((a, b) => a.status.localeCompare(b.status));
         approvedList.sort((a, b) => a.status.localeCompare(b.status));
 
@@ -84,27 +154,31 @@ const AdManagement = () => {
     fetchAdsData();
   }, []);
 
-  // Toggle between pending and approved ads
   const toggleView = () => setIsPendingView(!isPendingView);
 
-  // Filter ads based on search input
   const filteredAds = (isPendingView ? pendingAds : approvedAds).filter((ad) =>
-    [ad.brandName, ad.adName, ad.phone]
-      .some((field) => field.toLowerCase().includes(searchTerm.toLowerCase()))
+    [ad.brandName, ad.adName].some((field) =>
+      field.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
-  // Handle status change from modal
-  const handleStatusChange = (adId, newStatus) => {
-    if (newStatus === "approved") {
-      const updatedPendingAds = pendingAds.filter((ad) => ad.adId !== adId);
-      const approvedAd = pendingAds.find((ad) => ad.adId === adId);
-      if (approvedAd) {
-        setApprovedAds([...approvedAds, { ...approvedAd, status: "approved" }]);
-        setPendingAds(updatedPendingAds);
-      }
-    } else if (newStatus === "rejected") {
-      const updatedPendingAds = pendingAds.filter((ad) => ad.adId !== adId);
-      setPendingAds(updatedPendingAds);
+  const handleSaveEditedAd = async (updatedAd) => {
+    try {
+      const adRef = doc(db, "ads", selectedAd.adId);
+      await updateDoc(adRef, updatedAd);
+
+      setPendingAds((prevAds) =>
+        prevAds.map((ad) =>
+          ad.adId === selectedAd.adId ? { ...ad, ...updatedAd } : ad
+        )
+      );
+      setApprovedAds((prevAds) =>
+        prevAds.map((ad) =>
+          ad.adId === selectedAd.adId ? { ...ad, ...updatedAd } : ad
+        )
+      );
+    } catch (error) {
+      console.error("Error updating ad: ", error);
     }
   };
 
@@ -112,9 +186,8 @@ const AdManagement = () => {
     <div className="p-4">
       <div className="bg-purple-50 rounded-lg shadow-md p-4 h-full">
         <h1 className="w-full font-semibold font-Lato text-xl mb-4">Ads Management</h1>
-        
+
         <div className="flex justify-between mb-4">
-          {/* Toggle Buttons */}
           <div className="bg-white px-2 rounded-3xl flex">
             <button
               onClick={toggleView}
@@ -130,7 +203,6 @@ const AdManagement = () => {
             </button>
           </div>
 
-          {/* Search Bar */}
           <div className="relative flex items-center">
             <img
               src={search}
@@ -139,7 +211,7 @@ const AdManagement = () => {
             />
             <input
               type="text"
-              placeholder="Search by Brand Name, Ad Name, or Phone"
+              placeholder="Search by Brand Name or Ad Name"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-12 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -147,7 +219,6 @@ const AdManagement = () => {
           </div>
         </div>
 
-        {/* Ads Table */}
         <div>
           <h2 className="font-semibold text-xl mb-4">
             {isPendingView ? "Pending Ads" : "Approved Ads"}
@@ -155,13 +226,20 @@ const AdManagement = () => {
           <Table columns={columns} data={filteredAds} />
         </div>
 
-        {/* Ad Details Modal */}
         {selectedAd && (
           <AdDetailsModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             adDetails={selectedAd}
-            onStatusChange={(newStatus) => handleStatusChange(selectedAd.adId, newStatus)}
+          />
+        )}
+
+        {selectedAd && (
+          <EditAdModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            ad={selectedAd}
+            onSave={handleSaveEditedAd}
           />
         )}
       </div>
