@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase"; // Firebase config import
 import Table from "./Table";
 import search from "../assets/search.svg";
@@ -113,14 +113,27 @@ const AdManagement = () => {
         const pendingList = [];
         const approvedList = [];
 
-        querySnapshot.docs.forEach((doc) => {
-          const data = doc.data();
+        for (const docSnap of querySnapshot.docs) {
+          const data = docSnap.data();
+          const brandDoc = data.brandId
+            ? await getDoc(doc(db, "Brands", data.brandId))
+            : null;
+          const brandName = brandDoc?.exists() ? brandDoc.data().brandName : "N/A";
+
+          const specificAdvertise =
+            data.email?.length > 0
+              ? "Email"
+              : data.phone?.length > 0
+              ? "Phone"
+              : "N/A";
+
           const ad = {
-            adId: doc.id,
+            adId: docSnap.id,
             adName: data.adName || "N/A",
-            brandName: data.brandName || "N/A",
+            brandName,
             dailyBudget: data.dailyBudget || 0,
             location: data.location || "N/A",
+            specificAdvertise,
             startDate: data.createdAt
               ? typeof data.createdAt.seconds === "number"
                 ? new Date(data.createdAt.seconds * 1000).toLocaleString()
@@ -139,7 +152,7 @@ const AdManagement = () => {
           } else if (ad.status === "approved" || ad.status === "Paused") {
             approvedList.push(ad);
           }
-        });
+        }
 
         pendingList.sort((a, b) => a.status.localeCompare(b.status));
         approvedList.sort((a, b) => a.status.localeCompare(b.status));
@@ -191,13 +204,17 @@ const AdManagement = () => {
           <div className="bg-white px-2 rounded-3xl flex">
             <button
               onClick={toggleView}
-              className={`px-4 py-1 rounded-full ${isPendingView ? "bg-purple-600 text-white" : "text-black"}`}
+              className={`px-4 py-1 rounded-full ${
+                isPendingView ? "bg-purple-600 text-white" : "text-black"
+              }`}
             >
               Pending
             </button>
             <button
               onClick={toggleView}
-              className={`px-4 py-1 rounded-full ${!isPendingView ? "bg-purple-600 text-white" : "text-black"}`}
+              className={`px-4 py-1 rounded-full ${
+                !isPendingView ? "bg-purple-600 text-white" : "text-black"
+              }`}
             >
               Approved Ads
             </button>

@@ -1,21 +1,54 @@
-import React from "react";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore"; // Import deleteDoc and updateDoc
-import { db } from "../firebase"; // Import initialized Firebase
+import React, { useEffect, useState } from "react";
+import { doc, getDoc, deleteDoc, updateDoc } from "firebase/firestore"; // Import necessary Firestore methods
+import { db } from "../firebase"; // Import Firebase configuration
 
 const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
-  if (!isOpen || !adDetails) return null;
+  const [brandName, setBrandName] = useState("N/A"); // State to store the brand name
+  const [specificAdvertise, setSpecificAdvertise] = useState("N/A"); // State to store the specific advertise type
 
+  // Fetch brand name and determine specific advertise type
+  useEffect(() => {
+    const fetchBrandNameAndSpecificAdvertise = async () => {
+      if (!adDetails) return;
+
+      // Fetch brand name from "Brands" collection
+      if (adDetails.brandId) {
+        try {
+          const brandDocRef = doc(db, "Brands", adDetails.brandId);
+          const brandDoc = await getDoc(brandDocRef);
+          if (brandDoc.exists()) {
+            setBrandName(brandDoc.data().brandName || "N/A");
+          } else {
+            setBrandName("N/A");
+          }
+        } catch (error) {
+          console.error("Error fetching brand name:", error);
+          setBrandName("N/A");
+        }
+      }
+
+      // Determine specific advertise type
+      if (Array.isArray(adDetails.email) && adDetails.email.length > 0) {
+        setSpecificAdvertise("Email");
+      } else if (Array.isArray(adDetails.phone) && adDetails.phone.length > 0) {
+        setSpecificAdvertise("Phone");
+      } else {
+        setSpecificAdvertise("N/A");
+      }
+    };
+
+    fetchBrandNameAndSpecificAdvertise();
+  }, [adDetails]);
+
+  // Update ad status
   const updateStatus = async (status) => {
     try {
-      const adDocRef = doc(db, "ads", adDetails.adId); // Reference to the Firestore document
-      await updateDoc(adDocRef, { status }); // Update status field
+      const adDocRef = doc(db, "ads", adDetails.adId);
+      await updateDoc(adDocRef, { status });
 
-      // Notify parent component about the change
       if (onStatusChange) onStatusChange(status);
 
-      // Close the modal
       onClose();
-
       console.log(`Ad successfully ${status}.`);
     } catch (error) {
       console.error(`Error updating ad status to ${status}:`, error);
@@ -23,6 +56,7 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
     }
   };
 
+  // Delete ad
   const deleteAd = async () => {
     try {
       if (!adDetails.adId) {
@@ -30,22 +64,20 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
         return;
       }
 
-      console.log("Attempting to delete Ad with ID:", adDetails.adId);
+      const adDocRef = doc(db, "ads", adDetails.adId);
+      await deleteDoc(adDocRef);
 
-      const adDocRef = doc(db, "ads", adDetails.adId); // Reference to Firestore document
-      await deleteDoc(adDocRef); // Delete the document from Firestore
-
-      // Notify parent component about the deletion
       if (onStatusChange) onStatusChange("deleted");
 
-      onClose(); // Close the modal
+      onClose();
       alert("Ad successfully deleted.");
-      console.log("Ad document successfully deleted.");
     } catch (error) {
       console.error("Error deleting the ad:", error);
       alert("Failed to delete the ad. Please try again.");
     }
   };
+
+  if (!isOpen || !adDetails) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
@@ -68,7 +100,7 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
               <strong>Ad Name:</strong> {adDetails.adName || "N/A"}
             </p>
             <p>
-              <strong>Brand Name:</strong> {adDetails.brandName || "N/A"}
+              <strong>Brand Name:</strong> {brandName}
             </p>
             <p>
               <strong>Ad Type:</strong> {adDetails.adType || "N/A"}
@@ -80,7 +112,7 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
               <strong>Status:</strong> {adDetails.status || "N/A"}
             </p>
             <p>
-              <strong>Specific Advertise:</strong> {adDetails.specific || "N/A"}
+              <strong>Specific Advertise:</strong> {specificAdvertise}
             </p>
 
             {/* Conditional Buttons */}
@@ -114,7 +146,7 @@ const AdDetailsModal = ({ isOpen, onClose, adDetails, onStatusChange }) => {
                   Delete
                 </button>
               </div>
-            ) :(
+            ) : (
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={() => updateStatus("approved")}

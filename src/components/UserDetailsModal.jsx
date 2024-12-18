@@ -3,6 +3,9 @@ import React from "react";
 const UserDetailsModal = ({ isOpen, onClose, user }) => {
   if (!isOpen) return null;
 
+  // Determine which image to display based on the user's profile field
+  const userImage = user?.profile ? user.profile : "/profile.jpg";
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 max-w-lg w-full relative">
@@ -21,9 +24,6 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
             <p>
               <strong>User Name:</strong> {user?.userName || "N/A"}
             </p>
-            {/* <p>
-              <strong>Date of Birth:</strong> {user?.dob || "N/A"}
-            </p> */}
             <p>
               <strong>Age:</strong> {user?.age || "N/A"}
             </p>
@@ -39,7 +39,7 @@ const UserDetailsModal = ({ isOpen, onClose, user }) => {
           </div>
           <div>
             <img
-              src={user?.image ? user.image : "/profile.jpg"} // Default to profile.jpg if user.image is not available
+              src={userImage} // Use the determined image URL
               alt="User"
               className="rounded-lg object-cover w-40 h-40"
             />

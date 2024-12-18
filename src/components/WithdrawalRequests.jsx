@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Table from "./Table";
-import search from "../assets/search.svg";
-import filter from "../assets/filter.svg";
-import { collection, getDocs, query, updateDoc, doc } from "firebase/firestore";
-import { db } from "../firebase"; // Import your Firebase config here
 import WithdrawlsPopup from "./WithdrawalPopup";
+import { collection, getDocs, query, updateDoc, doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase"; // Import your Firebase config here
 
 const WithdrawlsRequests = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -89,6 +87,7 @@ const WithdrawlsRequests = () => {
           type: data.type || "NA",
           amount: data.amount || "NA",
           status: data.status || "NA",
+          userId: data.userId || "NA",
         };
 
         if (Withdrawls.status === "approved") {
@@ -138,11 +137,36 @@ const WithdrawlsRequests = () => {
 
   const handleReject = async (transId) => {
     try {
-      const docRef = doc(db, "Withdrawls", transId);
-      await updateDoc(docRef, { status: "rejected" });
+      // Find the withdrawal request to get the userId and amount
+      const rejectedItem = dataPending.find((item) => item.transId === transId);
 
-      // Update local state
-      setDataPending(dataPending.filter((item) => item.transId !== transId));
+      if (rejectedItem) {
+        const { userId, amount } = rejectedItem;
+
+        // Fetch the user's current points
+        const userDocRef = doc(db, "users", userId);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          const currentPoints = userData.points || 0;
+
+          // Update the user's points
+          const updatedPoints = currentPoints + parseFloat(amount);
+          await updateDoc(userDocRef, { points: updatedPoints });
+        } else {
+          console.error(`User document not found for userId: ${userId}`);
+        }
+
+        // Update the withdrawal status to "rejected"
+        const docRef = doc(db, "Withdrawls", transId);
+        await updateDoc(docRef, { status: "rejected" });
+
+        // Update local state
+        setDataPending(dataPending.filter((item) => item.transId !== transId));
+      } else {
+        console.error(`Withdrawal request not found for transId: ${transId}`);
+      }
     } catch (error) {
       console.error("Error rejecting request:", error);
     }
