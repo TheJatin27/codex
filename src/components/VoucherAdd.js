@@ -1,31 +1,60 @@
 import React, { useState, useEffect } from "react";
 import Papa from "papaparse";
-import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, getDocs } from "firebase/firestore";
 import "../VoucherPopup.css";
 import { db } from "../firebase"; // Import Firestore instance
 
 const VoucherAdd = ({ onClose, voucher, onSave }) => {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [voucherCodes, setVoucherCodes] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
-    voucherName: "",
-    voucherCategory: "fashion",
-    voucherLimit: "",
-    voucherCost: "",
-    voucherDetails: "",
-    voucherTerms: "",
+    voucherName: "", // We'll keep this for UI purposes, but the value will be based on categoryId
+    points: "",
+    termsAndConditions: "",
+    brandName: "",
+    offer: "",
+    categoryId: "", // Category ID that will be passed to Firestore
   });
+
+  // Fetch categories from Firestore
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categorySnapshot = await getDocs(collection(db, "VoucherCategory"));
+        const fetchedCategories = categorySnapshot.docs.map((doc) => ({
+          id: doc.id, // Fetch the document ID as the category ID
+          name: doc.data().name,
+        }));
+        setCategories(fetchedCategories);
+
+        // If editing a voucher, set the selected categoryId
+        if (voucher) {
+          setFormData((prev) => ({
+            ...prev,
+            categoryId: voucher.categoryId || "", // Set categoryId for editing
+            voucherCategory: voucher.voucherCategory || "", // Set category name for display in UI
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+
+    fetchCategories();
+  }, [voucher]);
 
   // Pre-fill form for editing
   useEffect(() => {
     if (voucher) {
       setFormData({
         voucherName: voucher.voucherName || "",
-        voucherCategory: voucher.voucherCategory || "fashion",
-        voucherLimit: voucher.voucherLimit || "",
-        voucherCost: voucher.voucherCost || "",
-        voucherDetails: voucher.voucherDetails || "",
-        voucherTerms: voucher.voucherTerms || "",
+        voucherCategory: voucher.voucherCategory || "",
+        points: voucher.points || "",
+        termsAndConditions: voucher.termsAndConditions || "",
+        brandName: voucher.brandName || "",
+        offer: voucher.offer || "",
+        categoryId: voucher.categoryId || "", // Added categoryId for editing
       });
       setUploadedImage(voucher.image || null);
       setVoucherCodes(voucher.voucherCodes || []);
@@ -51,7 +80,7 @@ const VoucherAdd = ({ onClose, voucher, onSave }) => {
             .filter((row) => row[0]) // Ensure no empty rows
             .map((row) => ({
               code: row[0],
-              redeemed: false,
+              isUsed: false, // Renamed "redeemed" to "isUsed"
             }));
           setVoucherCodes(codes);
         },
@@ -75,11 +104,22 @@ const VoucherAdd = ({ onClose, voucher, onSave }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // Retrieve category name based on categoryId
+    const selectedCategory = categories.find(
+      (category) => category.id === formData.categoryId
+    );
+    const categoryName = selectedCategory ? selectedCategory.name : "";
+
+    // Prepare the voucher data
     const voucherData = {
       ...formData,
-      voucherCodes,
+      voucherCodes: voucherCodes.map((code) => ({
+        ...code,
+        isUsed: code.isUsed, // Ensure isUsed field is sent
+      })),
       image: uploadedImage,
       timestamp: new Date().toISOString(),
+      eligibleProducts: categoryName, // Send category name as eligibleProducts
     };
 
     if (voucher) {
@@ -120,7 +160,7 @@ const VoucherAdd = ({ onClose, voucher, onSave }) => {
 
         {/* Form */}
         <form className="voucher-form" onSubmit={handleSubmit}>
-          {/* Image Upload Section */}
+          {/* Brand Image Upload Section */}
           <div className="form-group image-upload-group">
             <label className="image-upload-label">
               {uploadedImage ? (
@@ -131,7 +171,7 @@ const VoucherAdd = ({ onClose, voucher, onSave }) => {
                 />
               ) : (
                 <div className="image-placeholder">
-                  <p>Upload Voucher Brand Image</p>
+                  <p>Upload Brand Image</p>
                 </div>
               )}
               <input
@@ -141,6 +181,19 @@ const VoucherAdd = ({ onClose, voucher, onSave }) => {
                 className="file-input-hidden"
               />
             </label>
+          </div>
+
+          {/* Brand Name */}
+          <div className="form-group">
+            <label htmlFor="brandName">Brand Name</label>
+            <input
+              type="text"
+              id="brandName"
+              value={formData.brandName}
+              onChange={handleInputChange}
+              placeholder="Enter Brand Name"
+              className="input-field"
+            />
           </div>
 
           {/* Voucher Name */}
@@ -156,45 +209,41 @@ const VoucherAdd = ({ onClose, voucher, onSave }) => {
             />
           </div>
 
-          {/* Voucher Category */}
+          {/* Eligible Products (Category Dropdown) */}
           <div className="form-group">
-            <label htmlFor="voucherCategory">Voucher Category</label>
+            <label htmlFor="voucherCategory">Eligible Products</label>
             <select
-              id="voucherCategory"
-              value={formData.voucherCategory}
+              id="categoryId"
+              value={formData.categoryId}
               onChange={handleInputChange}
               className="input-field"
             >
-              <option value="fashion">Fashion</option>
-              <option value="electronics">Electronics</option>
-              <option value="grocery">Grocery</option>
-              <option value="beauty">Beauty</option>
-              <option value="others">Others</option>
+              <option value="">Select Category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Voucher Limit */}
-          <div className="form-group">
-            <label htmlFor="voucherLimit">Voucher Limit</label>
-            <input
-              type="number"
-              id="voucherLimit"
-              value={formData.voucherLimit}
-              onChange={handleInputChange}
-              placeholder="Enter Voucher Limit"
-              className="input-field"
-            />
-          </div>
+          {/* Hidden Category ID */}
+          <input
+            type="hidden"
+            id="categoryId"
+            value={formData.categoryId}
+            onChange={handleInputChange}
+          />
 
-          {/* Voucher Cost */}
+          {/* Voucher Points */}
           <div className="form-group">
-            <label htmlFor="voucherCost">Voucher Cost</label>
+            <label htmlFor="points">Voucher Points</label>
             <input
               type="text"
-              id="voucherCost"
-              value={formData.voucherCost}
+              id="points"
+              value={formData.points}
               onChange={handleInputChange}
-              placeholder="Enter Cost in Points"
+              placeholder="Enter Points"
               className="input-field"
             />
           </div>
@@ -211,24 +260,24 @@ const VoucherAdd = ({ onClose, voucher, onSave }) => {
             />
           </div>
 
-          {/* Voucher Details */}
+          {/* Offer Section */}
           <div className="form-group">
-            <label htmlFor="voucherDetails">Voucher Details</label>
+            <label htmlFor="offer">Offer</label>
             <textarea
-              id="voucherDetails"
-              value={formData.voucherDetails}
+              id="offer"
+              value={formData.offer}
               onChange={handleInputChange}
-              placeholder="Enter Voucher Details"
+              placeholder="Enter Offer Details"
               className="textarea-field"
             ></textarea>
           </div>
 
           {/* Terms & Conditions */}
           <div className="form-group">
-            <label htmlFor="voucherTerms">Voucher Terms & Conditions</label>
+            <label htmlFor="termsAndConditions">Voucher Terms & Conditions</label>
             <textarea
-              id="voucherTerms"
-              value={formData.voucherTerms}
+              id="termsAndConditions"
+              value={formData.termsAndConditions}
               onChange={handleInputChange}
               placeholder="Enter Terms & Conditions"
               className="textarea-field"

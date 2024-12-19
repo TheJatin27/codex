@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from "react";
 import Table from "./Table";
 import VoucherAdd from "./VoucherAdd"; // Import the VoucherAdd popup component
+import AddCategoryPopup from "./AddCategoryPopup"; // Import AddCategoryPopup
 import filter from "../assets/filter.svg";
 import search from "../assets/search.svg";
 import { Link } from "react-router-dom";
 import {
   collection,
   getDocs,
+  deleteDoc,
   doc,
   updateDoc,
-  deleteDoc,
 } from "firebase/firestore"; // Firestore functions
 import { db } from "../firebase"; // Import Firestore instance
 
 const Vouchers = () => {
   const [showPopup, setShowPopup] = useState(false); // State to manage popup visibility
+  const [showCategoryPopup, setShowCategoryPopup] = useState(false); // State for category popup
   const [vouchers, setVouchers] = useState([]); // State to store fetched voucher data
   const [editingVoucher, setEditingVoucher] = useState(null); // State for editing voucher
   const [searchTerm, setSearchTerm] = useState(""); // State for search input
@@ -25,70 +27,75 @@ const Vouchers = () => {
       try {
         const querySnapshot = await getDocs(collection(db, "vouchers"));
         const fetchedVouchers = querySnapshot.docs.map((doc) => ({
-          id: doc.id, // Include Firestore document ID
-          ...doc.data(),
+          id: doc.id, // Ensure to use Firestore doc ID
+          ...doc.data(), // Spread the document data
         }));
-        setVouchers(fetchedVouchers);
+        setVouchers(fetchedVouchers); // Set fetched vouchers in state
       } catch (error) {
         console.error("Error fetching vouchers:", error);
       }
     };
 
-    fetchVouchers();
+    fetchVouchers(); // Fetch vouchers when component mounts
   }, []);
 
   const handleOpenPopup = (voucher = null) => {
-    setEditingVoucher(voucher); // Set the voucher to edit or null for a new one
-    setShowPopup(true); // Show popup
+    setEditingVoucher(voucher); // Set voucher for editing or null for new
+    setShowPopup(true); // Open the popup
   };
 
   const handleClosePopup = () => {
-    setShowPopup(false); // Hide popup
-    setEditingVoucher(null); // Reset editing state
+    setShowPopup(false); // Close the popup
+    setEditingVoucher(null); // Reset editing voucher
   };
 
   const handleRemoveVoucher = async (id) => {
     try {
-      await deleteDoc(doc(db, "vouchers", id));
-      setVouchers((prev) => prev.filter((voucher) => voucher.id !== id)); // Update state
-      alert("Voucher removed successfully!");
+      await deleteDoc(doc(db, "vouchers", id)); // Delete voucher from Firestore
+      setVouchers((prev) => prev.filter((voucher) => voucher.id !== id)); // Remove from local state
+      alert("Voucher removed successfully!"); // Success message
     } catch (error) {
       console.error("Error removing voucher:", error);
-      alert("Failed to remove voucher.");
+      alert("Failed to remove voucher."); // Error message
     }
   };
 
   const handleEditVoucher = async (id, updatedData) => {
     try {
-      const voucherDoc = doc(db, "vouchers", id);
-      await updateDoc(voucherDoc, updatedData);
+      const voucherDoc = doc(db, "vouchers", id); // Get Firestore document reference
+      await updateDoc(voucherDoc, updatedData); // Update the voucher
       setVouchers((prev) =>
         prev.map((voucher) =>
-          voucher.id === id ? { ...voucher, ...updatedData } : voucher
+          voucher.id === id ? { ...voucher, ...updatedData } : voucher // Update in local state
         )
-      ); // Update state
-      alert("Voucher updated successfully!");
+      );
+      alert("Voucher updated successfully!"); // Success message
     } catch (error) {
       console.error("Error updating voucher:", error);
-      alert("Failed to update voucher.");
+      alert("Failed to update voucher."); // Error message
     }
   };
 
-  // Filter vouchers based on search input
+  const handleCategoryAdded = (newCategory) => {
+    // Handle the addition of new categories (if needed)
+    console.log("New category added:", newCategory);
+  };
+
+  // Filter vouchers based on search term
   const filteredVouchers = vouchers.filter((voucher) =>
-    voucher.voucherName.toLowerCase().includes(searchTerm.toLowerCase())
+    voucher.voucherName?.toLowerCase().includes(searchTerm.toLowerCase()) // Case insensitive search
   );
 
   const columns = [
     { header: "Voucher ID", field: "id" },
     { header: "Voucher Name", field: "voucherName" },
-    { header: "Voucher Category", field: "voucherCategory" },
-    { header: "Voucher Cost", field: "voucherCost" },
+    { header: "Voucher Category", field: "eligibleProducts" },
+    { header: "Voucher Cost", field: "points" },
     {
       header: "Vouchers Redeemed",
       render: (row) =>
-        `${row.voucherCodes.filter((code) => code.redeemed).length}/${
-          row.voucherCodes.length
+        `${row.voucherCodes?.filter((code) => code.redeemed).length || 0}/${
+          row.voucherCodes?.length || 0
         }`,
     },
     {
@@ -97,7 +104,7 @@ const Vouchers = () => {
         <div className="flex space-x-2">
           <button
             className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600"
-            onClick={() => handleOpenPopup(row)} // Pass voucher to edit
+            onClick={() => handleOpenPopup(row)} // Open popup for editing
           >
             Edit Voucher
           </button>
@@ -120,15 +127,16 @@ const Vouchers = () => {
             <h1 className="text-xl font-bold">Vouchers</h1>
             <button
               className="ml-4 h-10 px-2 bg-[#9A02E2] text-white rounded-lg hover:bg-purple-600 flex items-center"
-              onClick={() => handleOpenPopup()} // Open popup for new voucher
+              onClick={() => handleOpenPopup()} // Open popup to add new voucher
             >
               Add New Voucher
             </button>
-            <Link to="/voucher-transactions">
-              {/* <button className="ml-4 h-10 px-2 border bg-[#fff] text-[#9A02E2] border-[#9A02E2] rounded-lg hover:bg-[#f1f1f1] flex items-center">
-                Voucher Transactions
-              </button> */}
-            </Link>
+            <button
+              className="ml-4 h-10 px-2 bg-[#9A02E2] text-white rounded-lg hover:bg-purple-600 flex items-center"
+              onClick={() => setShowCategoryPopup(true)} // Open category popup
+            >
+              Add Category
+            </button>
           </div>
           <div className="flex">
             <div className="relative flex justify-between">
@@ -142,7 +150,7 @@ const Vouchers = () => {
                   type="text"
                   placeholder="Search Voucher"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)} // Update search term
+                  onChange={(e) => setSearchTerm(e.target.value)} // Set search term
                   className="pl-12 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -155,15 +163,21 @@ const Vouchers = () => {
             </div>
           </div>
         </div>
-        <Table columns={columns} data={filteredVouchers} />
+        <Table columns={columns} data={filteredVouchers} /> {/* Pass filtered vouchers to table */}
       </div>
 
-      {/* Conditional rendering of the popup */}
       {showPopup && (
         <VoucherAdd
           onClose={handleClosePopup}
-          voucher={editingVoucher} // Pass voucher to edit
-          onSave={handleEditVoucher} // Save changes
+          voucher={editingVoucher}
+          onSave={handleEditVoucher}
+        />
+      )}
+
+      {showCategoryPopup && (
+        <AddCategoryPopup
+          onClose={() => setShowCategoryPopup(false)} // Close category popup
+          onCategoryAdded={handleCategoryAdded}
         />
       )}
     </div>
